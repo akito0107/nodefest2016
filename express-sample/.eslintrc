@@ -1,0 +1,33 @@
+{
+  "env": {
+    "node": true
+  },
+  "extends": [
+    "plugin:flowtype/recommended",
+    "airbnb"
+  ],
+  "plugins": [
+    "flowtype"
+  ],
+  "rules": {
+    "semi": [
+      "error",
+      "never"
+    ],
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "devDependencies": true
+      }
+    ],
+    "no-trailing-spaces": [
+      "error",
+      {
+        "skipBlankLines": true
+      }
+    ],
+    "no-use-before-define": 0,
+    "strict": ["error", "global"]
+  }
+}
+
