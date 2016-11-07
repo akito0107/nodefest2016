@@ -5,8 +5,10 @@ module.exports = {
   update,
 }
 
+const Todo = require('../../models').Todo
+
 function index(options) {
-  const Todo = options.Todo
+  const Todo = options.Todo || Todo
   const limit = options.limit || 30
   
   return (req = {}, res = {}, next) => {
@@ -27,8 +29,19 @@ function index(options) {
 }
 
 function update(options) {
+  const Todo = options.Todo || Todo
   return (req = {}, res = {}, next) => {
-    res.send({ todo: {} })
+    const body = req.body
+    
+    Todo.findOne({ _id: body.id }).exec()
+        .then((doc) => {
+          doc.isCompleted = body.isCompleted
+          doc.updatedAt = body.updatedAt
+          doc.body = body.body
+          return doc.save()
+        }).then((result) => {
+          return res.send({ todo: result })
+        }).catch(next)
   }
 }
 

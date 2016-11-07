@@ -8,6 +8,8 @@
         "watch:test:server": "ava --watch server/__tests__/**/*.js",
         "watch:test:server:routes": "ava --watch server/routes/__tests__/**/*.js",
         "watch:test:server:routes:todos": "ava -T 2000 -s --watch server/routes/todos/__tests__/**/*.js",
+        "watch:test:server:routes:todos:index": "ava -T 2000 -s --watch server/routes/todos/__tests__/index.js",
+        "watch:test:server:routes:todos:update": "ava -T 2000 -s --watch server/routes/todos/__tests__/update.js",
         "watch:test:server:lib": "ava --watch server/lib/__tests__/**/*.js"
     },
     "author": "",

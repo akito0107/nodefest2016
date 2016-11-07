@@ -1,7 +1,6 @@
 'use strict'
 
 const test = require('ava')
-const _ = require('lodash')
 
 const mongoClientInitializer = require('../../../lib/mongo_client')
 const Todo = require('../../../models').Todo
@@ -22,10 +21,31 @@ test.afterEach.always(() => {
 })
 
 test.cb.serial('IDを指定してUpdateできる', (t) => {
-  new Todo({ body: 'body', createdAt: Date.now(), isCompleted: false}).save().then((doc) => {
+  const now = Date.now()
+  new Todo({ body: 'body', createdAt: now - 10000, isCompleted: false }).save().then((doc) => {
     const id = doc._id
-    console.log(doc)
-    t.fail()
-    t.end()
+    
+    const request = {
+      body: {
+        id,
+        isCompleted: true,
+        updatedAt: now,
+      },
+    }
+    
+    update(request, {
+      send: (result) => {
+        t.deepEqual(result.todo._id, id)
+        t.deepEqual(result.todo.updatedAt, now)
+        t.is(result.todo.isCompleted, true)
+        t.end()
+      },
+    }, t.end)
   })
+})
+
+test.cb.serial('IDを指定しないとError (403)', (t) => {
+
+  t.fail()
+  t.end()
 })
