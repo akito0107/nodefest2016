@@ -29,7 +29,8 @@
     "no-use-before-define": 0,
     "strict": 0,
     "arrow-body-style": 0,
-    "no-param-reassign": ["error", {"props": false}]
+    "no-param-reassign": ["error", {"props": false}],
+    "consistent-return": 0
   }
 }
 

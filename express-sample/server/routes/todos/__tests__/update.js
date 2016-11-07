@@ -1,6 +1,7 @@
 'use strict'
 
 const test = require('ava')
+const objectId = require('mongoose').Types.ObjectId
 
 const mongoClientInitializer = require('../../../lib/mongo_client')
 const Todo = require('../../../models').Todo
@@ -45,7 +46,41 @@ test.cb.serial('IDを指定してUpdateできる', (t) => {
 })
 
 test.cb.serial('IDを指定しないとError (403)', (t) => {
+  const request = { body: { isCompleted: true } }
+  update(request, {
+    send: () => {
+    },
+  }, (err) => {
+    t.is(err.code, 403)
+    t.is(err.message, 'missing required parameter')
+    t.end()
+  })
+})
 
-  t.fail()
-  t.end()
+test.cb.serial('指定されたtodoがなかったらError (404)', (t) => {
+  const id = objectId('4edd40c86762e0fb12000003')
+  const request = { body: { isCompleted: true, id } }
+  
+  update(request, {
+    send: () => {
+    },
+  }, (err) => {
+    t.is(err.code, 404)
+    t.is(err.message, 'not found')
+    t.end()
+  })
+})
+
+test.cb.serial('指定されたIDがフォーマットに則っていなかったらError (403)', (t) => {
+  const request = { body: { isCompleted: true, id: 'hoge' } }
+  
+  update(request, {
+    send: () => {
+    },
+  }, (err) => {
+    t.is(err.code, 403)
+    t.is(err.message, 'invalid parameter')
+    t.deepEqual(err.body, { id: { message: 'id must be a valid format', value: request.body.id } })
+    t.end()
+  })
 })
