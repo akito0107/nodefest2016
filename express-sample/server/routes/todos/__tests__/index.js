@@ -1,35 +1,27 @@
 'use strict'
 
 const test = require('ava')
-const mongoose = require('mongoose')
-mongoose.Promise = Promise
+const _ = require('lodash')
 
-const Schema = mongoose.Schema
-const todoSchema = new Schema({
-  body: String,
-  isCompleted: Boolean,
-  createdAt: Date,
-})
-
-const Todo = mongoose.model('Todo', todoSchema)
-const TEST_DB = 'test_express_database'
+const mongoClientInitializer = require('../../../lib/mongo_client')
+const Todo = require('../../../models').Todo
 const index = require('../index').index({ Todo })
 
-let db
+const TEST_DB = 'test_express_database'
+let mongoClient
+
 // DB Set Up
-test.cb.beforeEach((t) => {
-  db = mongoose.connection
-  db.on('error', console.error.bind(console, 'connection error:'))
-  db.once('open', t.end)
-  mongoose.connect(`mongodb://localhost/${TEST_DB}`)
+test.beforeEach(() => {
+  mongoClient = mongoClientInitializer()
+  return mongoClient.connect(`mongodb://localhost/${TEST_DB}`)
 })
 
-test.afterEach.cb((t) => {
+test.afterEach.always(() => {
   Todo.find({}).remove().exec()
-  db.close(t.end)
+  return mongoClient.close()
 })
 
-test('todosがレスポンスに入ってくる', (t) => {
+test.serial('todosがレスポンスに入ってくる', (t) => {
   const todos = { todos: [] }
   
   index({}, {
@@ -42,20 +34,107 @@ test('todosがレスポンスに入ってくる', (t) => {
   })
 })
 
-test('DBに登録したtodoがレスポンスに入ってくる', (t) => {
+test.serial.cb('DBに登録したtodoがレスポンスに入ってくる', (t) => {
   const now = Date.now()
-  const todo = new Todo({ body: 'some text', isCompleted: true, createdAt: now })
+  const todo = new Todo({ body: 'some text', isCompleted: false, createdAt: now })
   
-  return todo.save().then((doc) => {
+  todo.save().then((doc) => {
     t.truthy(doc)
     index({}, {
       send: (result) => {
         t.is(result.todos[0].body, 'some text')
-        t.is(result.todos[0].isCompleted, true)
+        t.is(result.todos[0].isCompleted, false)
         t.deepEqual(result.todos[0].createdAt, new Date(now))
+        t.end()
       },
-    }, (e) => {
-      t.falsy(e)
+    }, t.end)
+  }).catch(t.end)
+})
+
+test.serial.cb('DBに登録したtodoが上位30件のみ取得できる', (t) => {
+  const now = Date.now()
+  
+  Promise.all(_.range(0, 31).map((i) => {
+    return new Todo({ body: `test body${i}`, isCompleted: false, createdAt: now }).save()
+  })).then(() => {
+    index({}, {
+      send: (result) => {
+        t.is(result.todos.length, 30)
+        t.end()
+      },
+    }, t.end)
+  }).catch(t.end)
+})
+
+test.serial.cb('pagenationできる', (t) => {
+  const now = Date.now()
+  const previous = now - 1000
+  
+  const request = {
+    query: {
+      page: 2,
+    },
+  }
+  
+  Promise.all(_.range(0, 30).map((i) => {
+    return new Todo({ body: `test body${i}`, isCompleted: false, createdAt: now }).save()
+  })).then(() => {
+    return new Todo({ body: 'previous', isCompleted: false, createdAt: previous }).save()
+  }).then(() => {
+    index(request, {
+      send: (results) => {
+        const todo = results.todos[0]
+        t.deepEqual(todo.createdAt, new Date(previous))
+        t.is(todo.body, 'previous')
+        t.is(results.page, 2)
+        t.end()
+      },
+    }, t.end)
+  }).catch(t.end)
+})
+
+test.serial.cb('未消化のもののみ取得できる', (t) => {
+  Promise.all(_.range(0, 10).map(() => {
+    return new Todo({ body: 'completed', isCompleted: true }).save()
+  })).then(() => {
+    return Promise.all(_.range(0, 10).map(() => {
+      return new Todo({ body: 'uncompleted', isCompleted: false }).save()
+    }))
+  }).then(() => {
+    index({}, {
+      send: (results) => {
+        t.is(results.todos.length, 10)
+        results.todos.forEach((todo) => {
+          t.is(todo.isCompleted, false)
+        })
+        t.end()
+      },
     })
-  })
+  }).catch(t.end)
+})
+
+test.serial.cb('消化済みのものが取得できる', (t) => {
+  const request = {
+    query: {
+      completed: true,
+    },
+  }
+  
+  Promise.all(_.range(0, 10).map(() => {
+    return new Todo({ body: 'completed', isCompleted: true }).save()
+  })).then(() => {
+    return Promise.all(_.range(0, 10).map(() => {
+      return new Todo({ body: 'uncompleted', isCompleted: false }).save()
+    }))
+  }).then(() => {
+    index(request, {
+      send: (results) => {
+        t.is(results.todos.length, 10)
+        results.todos.forEach((todo) => {
+          t.is(todo.isCompleted, true)
+        })
+        t.end()
+      },
+    })
+  }).catch(t.end)
 })
