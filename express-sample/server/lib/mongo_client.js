@@ -8,10 +8,13 @@ class MongoClient {
   
   constructor(options = {}) {
     this.endpoint = options.endpoint || mongoose
-    mongoose.Promise = options.Promise || Promise 
+    mongoose.Promise = options.Promise || Promise
+    this.host = options.host || 'localhost'
+    this.database = options.database || 'express_sample_development'
   }
   
-  connect(uri, options = {}) {
+  connect(options = {}) {
+    const uri = `mongodb://${this.host}/${this.database}`
     return new Promise((resolve, reject) => {
       this.endpoint.connect(uri, options, (err) => {
         if (err) {

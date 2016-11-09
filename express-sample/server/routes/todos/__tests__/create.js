@@ -10,8 +10,8 @@ let mongoClient
 
 // DB Set Up
 test.beforeEach(() => {
-  mongoClient = mongoClientInitializer()
-  return mongoClient.connect(`mongodb://localhost/${TEST_DB}`)
+  mongoClient = mongoClientInitializer({ host: 'localhost', database: TEST_DB })
+  return mongoClient.connect()
 })
 
 test.afterEach.always(() => {

@@ -4,7 +4,7 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "test:server": "ava -v server/**/__tests__/**/*.js",
+        "test:server": "ava -v -T 2000 -s server/**/__tests__/**/*.js",
         "watch:test:server": "ava --watch server/__tests__/**/*.js",
         "watch:test:server:routes": "ava --watch server/routes/__tests__/**/*.js",
         "watch:test:server:routes:todos": "ava -T 2000 -s --watch server/routes/todos/__tests__/**/*.js",
