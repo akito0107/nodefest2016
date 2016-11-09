@@ -14,7 +14,7 @@ class MongoClient {
   }
   
   connect(options = {}) {
-    const uri = `mongodb://${this.host}/${this.database}`
+    const uri = `mongodb://${this.host}/${this.database}/`
     return new Promise((resolve, reject) => {
       this.endpoint.connect(uri, options, (err) => {
         if (err) {

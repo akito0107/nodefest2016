@@ -6,9 +6,21 @@ const mongoosePaginate = require('mongoose-paginate')
 const Schema = mongoose.Schema
 
 const todoSchema = new Schema({
-  body: String,
-  isCompleted: Boolean,
-  createdAt: Date,
+  body: {
+    type: String,
+    required: true,
+  },
+  isCompleted: {
+    type: Boolean,
+    required: true,
+  },
+  createdAt: {
+    type: Date,
+    required: true,
+  },
+  updatedAt: {
+    type: Date,
+  },
 })
 todoSchema.plugin(mongoosePaginate)
 

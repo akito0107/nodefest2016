@@ -25,7 +25,7 @@ test.serial('todosがレスポンスに入ってくる', (t) => {
   const todos = { todos: [] }
   
   index({}, {
-    send: (result) => {
+    json: (result) => {
       t.deepEqual(todos, result)
       t.pass()
     },
@@ -41,7 +41,7 @@ test.serial.cb('DBに登録したtodoがレスポンスに入ってくる', (t) 
   todo.save().then((doc) => {
     t.truthy(doc)
     index({}, {
-      send: (result) => {
+      json: (result) => {
         t.is(result.todos[0].body, 'some text')
         t.is(result.todos[0].isCompleted, false)
         t.deepEqual(result.todos[0].createdAt, new Date(now))
@@ -58,7 +58,7 @@ test.serial.cb('DBに登録したtodoが上位30件のみ取得できる', (t) =
     return new Todo({ body: `test body${i}`, isCompleted: false, createdAt: now }).save()
   })).then(() => {
     index({}, {
-      send: (result) => {
+      json: (result) => {
         t.is(result.todos.length, 30)
         t.end()
       },
@@ -82,7 +82,7 @@ test.serial.cb('pagenationできる', (t) => {
     return new Todo({ body: 'previous', isCompleted: false, createdAt: previous }).save()
   }).then(() => {
     index(request, {
-      send: (results) => {
+      json: (results) => {
         const todo = results.todos[0]
         t.deepEqual(todo.createdAt, new Date(previous))
         t.is(todo.body, 'previous')
@@ -95,14 +95,14 @@ test.serial.cb('pagenationできる', (t) => {
 
 test.serial.cb('未消化のもののみ取得できる', (t) => {
   Promise.all(_.range(0, 10).map(() => {
-    return new Todo({ body: 'completed', isCompleted: true }).save()
+    return new Todo({ body: 'completed', isCompleted: true, createdAt: Date.now() }).save()
   })).then(() => {
     return Promise.all(_.range(0, 10).map(() => {
-      return new Todo({ body: 'uncompleted', isCompleted: false }).save()
+      return new Todo({ body: 'uncompleted', isCompleted: false, createdAt: Date.now() }).save()
     }))
   }).then(() => {
     index({}, {
-      send: (results) => {
+      json: (results) => {
         t.is(results.todos.length, 10)
         results.todos.forEach((todo) => {
           t.is(todo.isCompleted, false)
@@ -121,14 +121,14 @@ test.serial.cb('消化済みのものが取得できる', (t) => {
   }
   
   Promise.all(_.range(0, 10).map(() => {
-    return new Todo({ body: 'completed', isCompleted: true }).save()
+    return new Todo({ body: 'completed', isCompleted: true, createdAt: Date.now() }).save()
   })).then(() => {
     return Promise.all(_.range(0, 10).map(() => {
-      return new Todo({ body: 'uncompleted', isCompleted: false }).save()
+      return new Todo({ body: 'uncompleted', isCompleted: false, createdAt: Date.now() }).save()
     }))
   }).then(() => {
     index(request, {
-      send: (results) => {
+      json: (results) => {
         t.is(results.todos.length, 10)
         results.todos.forEach((todo) => {
           t.is(todo.isCompleted, true)

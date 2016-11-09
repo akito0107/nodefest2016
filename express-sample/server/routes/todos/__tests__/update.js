@@ -23,7 +23,8 @@ test.afterEach.always(() => {
 
 test.cb.serial('IDを指定してUpdateできる', (t) => {
   const now = Date.now()
-  new Todo({ body: 'body', createdAt: now - 10000, isCompleted: false }).save().then((doc) => {
+  const todo = new Todo({ body: 'body', createdAt: now - 10000, isCompleted: false })
+  todo.save().then((doc) => {
     const id = doc._id
     
     const request = {
@@ -37,20 +38,20 @@ test.cb.serial('IDを指定してUpdateできる', (t) => {
     }
     
     update(request, {
-      send: (result) => {
+      json: (result) => {
         t.deepEqual(result.todo._id, id)
-        t.deepEqual(result.todo.updatedAt, now)
+        t.deepEqual(result.todo.updatedAt, new Date(now))
         t.is(result.todo.isCompleted, true)
         t.end()
       },
     }, t.end)
-  })
+  }).catch(t.end)
 })
 
 test.cb.serial('IDを指定しないとError (403)', (t) => {
-  const request = { params: {}, body: { isCompleted: true } }
+  const request = { params: {}, body: { body: 'Test', createdAt: Date.now(), isCompleted: true } }
   update(request, {
-    send: () => {
+    json: () => {
     },
   }, (err) => {
     t.is(err.code, 403)
@@ -61,10 +62,10 @@ test.cb.serial('IDを指定しないとError (403)', (t) => {
 
 test.cb.serial('指定されたtodoがなかったらError (404)', (t) => {
   const id = objectId('4edd40c86762e0fb12000003')
-  const request = { params: { id }, body: { isCompleted: true } }
+  const request = { params: { id }, body: { body: 'Test', createdAt: Date.now(), isCompleted: true } }
   
   update(request, {
-    send: () => {
+    json: () => {
     },
   }, (err) => {
     t.is(err.code, 404)
@@ -74,10 +75,10 @@ test.cb.serial('指定されたtodoがなかったらError (404)', (t) => {
 })
 
 test.cb.serial('指定されたIDがフォーマットに則っていなかったらError (403)', (t) => {
-  const request = { params: { id: 'hoge' }, body: { isCompleted: true } }
+  const request = { params: { id: 'hoge' }, body: { body: 'Test', createdAt: Date.now(), isCompleted: true } }
   
   update(request, {
-    send: () => {
+    json: () => {
     },
   }, (err) => {
     t.is(err.code, 403)

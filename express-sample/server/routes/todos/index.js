@@ -4,13 +4,14 @@ module.exports = {
   index,
   update,
   create,
+  show,
 }
 
 const TodoModel = require('../../models').Todo
 const objectId = require('mongoose').Types.ObjectId
 const Error = require('../../lib/error')
 
-function index(options) {
+function index(options = {}) {
   const Todo = options.Todo || TodoModel
   const limit = options.limit || 30
   
@@ -20,7 +21,7 @@ function index(options) {
     const params = { isCompleted: !!query.completed }
     
     return Todo.paginate(params, { page, limit }).then((doc) => {
-      return res.send({
+      return res.json({
         todos: doc.docs,
         total: doc.total,
         limit: doc.limit,
@@ -33,7 +34,7 @@ function index(options) {
   }
 }
 
-function update(options) {
+function update(options = {}) {
   const Todo = options.Todo || TodoModel
   return (req = {}, res = {}, next) => {
     const body = req.body
@@ -56,18 +57,17 @@ function update(options) {
       }, e))
     }
     
-    Todo.findOne({ _id: id }).exec()
-      .then((doc) => {
-        if (!doc) {
-          return next(new Error({ code: 404, message: 'not found' }))
-        }
-        doc.isCompleted = body.isCompleted
-        doc.updatedAt = body.updatedAt
-        doc.body = body.body
-        return doc.save()
-      })
+    Todo.findOneAndUpdate({ _id: id }, {
+      $set: {
+        body: body.body,
+        isCompleted: body.isCompleted,
+        updatedAt: body.updatedAt,
+      },
+    }, { new: true }).exec()
       .then((result) => {
-        return res.send({ todo: result })
+        
+        if (!result) return next(new Error({code: 404, message: 'not found'}))
+        return res.json({ todo: result })
       })
       .catch((e) => {
         next(new Error({}, e))
@@ -81,13 +81,21 @@ function create(options = {}) {
     const body = req.body
     const todo = new Todo({
       body: body.body,
+      isCompleted: false,
       createdAt: Date.now(),
     })
     todo.save().then((result) => {
       res.location = `/todos/${result._id}`
-      res.send(201)
+      res.status(201)
+      res.json({})
     }).catch((e) => {
       next(new Error({}, e))
     })
+  }
+}
+
+function show(options = {}) {
+  return (req, res, next) => {
+    res.send(200)
   }
 }
