@@ -1,0 +1,19 @@
+{
+  "name": "express-sample-2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha ./test/ --recursive",
+    "test:watch": "mocha -w ./test/ --recursive"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "mocha": "^3.1.2",
+    "supertest": "^2.0.1"
+  },
+  "dependencies": {
+    "express": "^4.14.0"
+  }
+}
