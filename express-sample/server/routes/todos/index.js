@@ -19,7 +19,7 @@ function index(options = {}) {
     const query = req.query || {}
     const page = query.page || 1
     const params = { isCompleted: !!query.completed }
-    const sort = query.sort ? {} : { createdAt: -1 }
+    const sort = query.sort ? { createdAt: 1 } : { createdAt: -1 }
     
     return Todo.paginate(params, { page, limit, sort }).then((doc) => {
       return res.json({
@@ -66,7 +66,7 @@ function update(options = {}) {
       },
     }, { new: true }).exec()
         .then((result) => {
-  
+          
           if (!result) {
             return next(new Error({ code: 404, message: 'not found' }))
           }

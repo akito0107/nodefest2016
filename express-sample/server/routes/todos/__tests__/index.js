@@ -63,7 +63,7 @@ test.serial.cb('DBに登録したtodoがレスポンスに入ってくる', (t) 
       }).catch(t.end)
 })
 
-test.serial.cb('createdAt順にソートされてDBに登録したtodoが上位30件のみ取得できる', (t) => {
+test.serial.cb('DBに登録したtodoが上位30件のみ取得できる', (t) => {
   createTodos(_.range(0, 31).map((i) => {
     return { body: `test body${i}`, isCompleted: false, createdAt: Date.now() }
   })).then(requestToIndex())
@@ -74,7 +74,8 @@ test.serial.cb('createdAt順にソートされてDBに登録したtodoが上位3
       }).catch(t.end)
 })
 
-test.serial.cb('pagenationできる', (t) => {
+
+test.serial.cb('createdAt順にソートされてpagenationできる', (t) => {
   const now = Date.now()
   const previous = now - 1000
   
@@ -95,8 +96,28 @@ test.serial.cb('pagenationできる', (t) => {
       .catch(t.end)
 })
 
-test.serial.cb('未消化のもののみ取得できる', (t) => {
+test.serial.cb('ソートの順番を指定できる', (t) => {
+  const now = Date.now()
+  const future = now + 1000
   
+  const todos = _.range(0, 30).reduce((memo, i) => {
+    memo.push({ body: `test body${i}`, isCompleted: false, createdAt: now })
+    return memo
+  }, [{ body: 'future', isCompleted: false, createdAt: future }])
+  
+  createTodos(todos)
+      .then(requestToIndex({ page: 2, sort: 1 }))
+      .then((response) => {
+        const results = response.body
+        const todo = results.todos[0]
+        t.is(todo.body, 'future')
+        t.is(results.page, '2')
+        t.end()
+      })
+      .catch(t.end)
+})
+
+test.serial.cb('未消化のもののみ取得できる', (t) => {
   const todos = _.range(0, 10).map(() => {
     return { body: 'completed', isCompleted: true, createdAt: Date.now() }
   }).concat(_.range(0, 10).map(() => {
