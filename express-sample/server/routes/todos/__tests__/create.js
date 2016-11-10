@@ -1,6 +1,10 @@
 'use strict'
 
 const test = require('ava')
+const app = require('express')()
+const bodyParser = require('body-parser')
+const request = require('supertest')
+
 const mongoClientInitializer = require('../../../lib/mongo_client')
 const Todo = require('../../../models').Todo
 const create = require('../index').create({ Todo })
@@ -10,6 +14,8 @@ let mongoClient
 
 // DB Set Up
 test.beforeEach(() => {
+  app.use(bodyParser.json())
+  app.route('/todos').post(create)
   mongoClient = mongoClientInitializer({ host: 'localhost', database: TEST_DB })
   return mongoClient.connect()
 })
@@ -20,42 +26,22 @@ test.afterEach.always(() => {
 })
 
 test.cb.serial('与えられたパラメータでTodoが作成できる', (t) => {
-  const request = {
-    body: {
-      body: 'todo task',
-    },
-  }
   
-  create(request, {
-    status: (code) => {
-      t.is(code, 201)
-    },
-    json: () => {
-      Todo.find({}).exec().then((doc) => {
-        t.is(doc.length, 1)
-        t.is(doc[0].body, 'todo task')
-        t.end()
+  request(app)
+      .post('/todos')
+      .type('json')
+      .send({ body: 'todo task' })
+      .expect(201)
+      .then(() => {
+        return Todo.find({}).exec()
       })
-    },
-  }, t.end)
-})
-
-test.cb.serial('作成されたTodoのisCompletedの初期値がfalse', (t) => {
-  const request = { body: { body: 'todo task' } }
-  
-  create(request, {
-    status: (code) => {
-      t.is(code, 201)
-    },
-    json: () => {
-      Todo.find({}).exec().then((doc) => {
+      .then((doc) => {
         t.is(doc.length, 1)
         t.is(doc[0].body, 'todo task')
         t.is(doc[0].isCompleted, false)
         t.end()
       })
-    },
-  })
+      .catch(t.end)
 })
 
 test.todo('locationがセットされている')
