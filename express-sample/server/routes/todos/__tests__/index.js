@@ -1,6 +1,10 @@
 'use strict'
 
 const test = require('ava')
+const request = require('supertest')
+const app = require('express')()
+const bodyParser = require('body-parser')
+
 const _ = require('lodash')
 
 const mongoClientInitializer = require('../../../lib/mongo_client')
@@ -13,6 +17,9 @@ let mongoClient
 // DB Set Up
 test.beforeEach(() => {
   mongoClient = mongoClientInitializer({ host: 'localhost', database: TEST_DB })
+  app.use(bodyParser.json())
+  app.route('/todos').get(index)
+  
   return mongoClient.connect()
 })
 
@@ -21,120 +28,132 @@ test.afterEach.always(() => {
   return mongoClient.close()
 })
 
-test.serial('todosがレスポンスに入ってくる', (t) => {
-  const todos = { todos: [] }
-  
-  index({}, {
-    json: (result) => {
-      t.deepEqual(todos, result)
-      t.pass()
-    },
-  }, (err) => {
-    t.falsy(err)
-  })
+function requestToIndex(params = {}) {
+  const query = Object.keys(params).reduce((memo, k) => {
+    return `${memo}${k}=${params[k]}&`
+  }, '?')
+  return () => {
+    return request(app).get(`/todos${query}`).expect(200)
+  }
+}
+
+function createTodos(todos) {
+  return Promise.all(todos.map((todo) => {
+    return new Todo(todo).save()
+  }))
+}
+
+test.serial.cb('todosがレスポンスに入ってくる', (t) => {
+  requestToIndex()()
+      .then((response) => {
+        t.truthy(response.body.todos)
+        t.end()
+      })
+      .catch(t.end)
 })
 
 test.serial.cb('DBに登録したtodoがレスポンスに入ってくる', (t) => {
-  const now = Date.now()
-  const todo = new Todo({ body: 'some text', isCompleted: false, createdAt: now })
-  
-  todo.save().then((doc) => {
-    t.truthy(doc)
-    index({}, {
-      json: (result) => {
-        t.is(result.todos[0].body, 'some text')
-        t.is(result.todos[0].isCompleted, false)
-        t.deepEqual(result.todos[0].createdAt, new Date(now))
+  createTodos([{ body: 'some text', isCompleted: false, createdAt: Date.now() }])
+      .then(requestToIndex())
+      .then((response) => {
+        const res = response.body.todos[0]
+        t.is(res.body, 'some text')
+        t.is(res.isCompleted, false)
         t.end()
-      },
-    }, t.end)
-  }).catch(t.end)
+      }).catch(t.end)
 })
 
 test.serial.cb('DBに登録したtodoが上位30件のみ取得できる', (t) => {
-  const now = Date.now()
-  
-  Promise.all(_.range(0, 31).map((i) => {
-    return new Todo({ body: `test body${i}`, isCompleted: false, createdAt: now }).save()
-  })).then(() => {
-    index({}, {
-      json: (result) => {
-        t.is(result.todos.length, 30)
+  createTodos(_.range(0, 31).map((i) => {
+    return { body: `test body${i}`, isCompleted: false, createdAt: Date.now() }
+  })).then(requestToIndex())
+      .then((response) => {
+        const todos = response.body.todos
+        t.is(todos.length, 30)
         t.end()
-      },
-    }, t.end)
-  }).catch(t.end)
+      }).catch(t.end)
 })
 
-test.serial.cb('pagenationできる', (t) => {
+
+test.serial.cb('createdAt順にソートされてpagenationできる', (t) => {
   const now = Date.now()
   const previous = now - 1000
   
-  const request = {
-    query: {
-      page: 2,
-    },
-  }
+  const todos = _.range(0, 30).reduce((memo, i) => {
+    memo.push({ body: `test body${i}`, isCompleted: false, createdAt: now })
+    return memo
+  }, [{ body: 'previous', isCompleted: false, createdAt: previous }])
   
-  Promise.all(_.range(0, 30).map((i) => {
-    return new Todo({ body: `test body${i}`, isCompleted: false, createdAt: now }).save()
-  })).then(() => {
-    return new Todo({ body: 'previous', isCompleted: false, createdAt: previous }).save()
-  }).then(() => {
-    index(request, {
-      json: (results) => {
+  createTodos(todos)
+      .then(requestToIndex({ page: 2 }))
+      .then((response) => {
+        const results = response.body
         const todo = results.todos[0]
-        t.deepEqual(todo.createdAt, new Date(previous))
         t.is(todo.body, 'previous')
-        t.is(results.page, 2)
+        t.is(results.page, '2')
         t.end()
-      },
-    }, t.end)
-  }).catch(t.end)
+      })
+      .catch(t.end)
+})
+
+test.serial.cb('ソートの順番を指定できる', (t) => {
+  const now = Date.now()
+  const future = now + 1000
+  
+  const todos = _.range(0, 30).reduce((memo, i) => {
+    memo.push({ body: `test body${i}`, isCompleted: false, createdAt: now })
+    return memo
+  }, [{ body: 'future', isCompleted: false, createdAt: future }])
+  
+  createTodos(todos)
+      .then(requestToIndex({ page: 2, sort: 1 }))
+      .then((response) => {
+        const results = response.body
+        const todo = results.todos[0]
+        t.is(todo.body, 'future')
+        t.is(results.page, '2')
+        t.end()
+      })
+      .catch(t.end)
 })
 
 test.serial.cb('未消化のもののみ取得できる', (t) => {
-  Promise.all(_.range(0, 10).map(() => {
-    return new Todo({ body: 'completed', isCompleted: true, createdAt: Date.now() }).save()
-  })).then(() => {
-    return Promise.all(_.range(0, 10).map(() => {
-      return new Todo({ body: 'uncompleted', isCompleted: false, createdAt: Date.now() }).save()
-    }))
-  }).then(() => {
-    index({}, {
-      json: (results) => {
+  const todos = _.range(0, 10).map(() => {
+    return { body: 'completed', isCompleted: true, createdAt: Date.now() }
+  }).concat(_.range(0, 10).map(() => {
+    return { body: 'uncompleted', isCompleted: false, createdAt: Date.now() }
+  }))
+  
+  createTodos(todos)
+      .then(requestToIndex())
+      .then((response) => {
+        const results = response.body
         t.is(results.todos.length, 10)
         results.todos.forEach((todo) => {
           t.is(todo.isCompleted, false)
         })
         t.end()
-      },
-    })
-  }).catch(t.end)
+      })
+      .catch(t.end)
 })
 
 test.serial.cb('消化済みのものが取得できる', (t) => {
-  const request = {
-    query: {
-      completed: true,
-    },
-  }
+  const todos = _.range(0, 10).map(() => {
+    return { body: 'completed', isCompleted: true, createdAt: Date.now() }
+  }).concat(_.range(0, 10).map(() => {
+    return { body: 'uncompleted', isCompleted: false, createdAt: Date.now() }
+  }))
   
-  Promise.all(_.range(0, 10).map(() => {
-    return new Todo({ body: 'completed', isCompleted: true, createdAt: Date.now() }).save()
-  })).then(() => {
-    return Promise.all(_.range(0, 10).map(() => {
-      return new Todo({ body: 'uncompleted', isCompleted: false, createdAt: Date.now() }).save()
-    }))
-  }).then(() => {
-    index(request, {
-      json: (results) => {
+  createTodos(todos)
+      .then(requestToIndex({ completed: true }))
+      .then((response) => {
+        const results = response.body
         t.is(results.todos.length, 10)
         results.todos.forEach((todo) => {
           t.is(todo.isCompleted, true)
         })
         t.end()
-      },
-    })
-  }).catch(t.end)
+      })
+      .catch(t.end)
 })
+
