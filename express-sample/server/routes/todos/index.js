@@ -19,8 +19,9 @@ function index(options = {}) {
     const query = req.query || {}
     const page = query.page || 1
     const params = { isCompleted: !!query.completed }
+    const sort = query.sort ? {} : { createdAt: -1 }
     
-    return Todo.paginate(params, { page, limit }).then((doc) => {
+    return Todo.paginate(params, { page, limit, sort }).then((doc) => {
       return res.json({
         todos: doc.docs,
         total: doc.total,
@@ -64,14 +65,16 @@ function update(options = {}) {
         updatedAt: body.updatedAt,
       },
     }, { new: true }).exec()
-      .then((result) => {
-        
-        if (!result) return next(new Error({code: 404, message: 'not found'}))
-        return res.json({ todo: result })
-      })
-      .catch((e) => {
-        next(new Error({}, e))
-      })
+        .then((result) => {
+  
+          if (!result) {
+            return next(new Error({ code: 404, message: 'not found' }))
+          }
+          return res.json({ todo: result })
+        })
+        .catch((e) => {
+          next(new Error({}, e))
+        })
   }
 }
 
