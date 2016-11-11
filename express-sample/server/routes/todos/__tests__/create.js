@@ -26,7 +26,6 @@ test.afterEach.always(() => {
 })
 
 test.cb.serial('与えられたパラメータでTodoが作成できる', (t) => {
-  
   request(app)
       .post('/todos')
       .type('json')
