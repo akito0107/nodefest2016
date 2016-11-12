@@ -5,7 +5,7 @@ var request = require('supertest');
 var assert = require('power-assert');
 
 function index(req, res) {
-  res.send();
+  res.send({ items: [] });
 }
 
 describe('GET /items', function() {
@@ -21,5 +21,13 @@ describe('GET /items', function() {
         .end(done)
   });
   
+  it('Get Items from DB', function(done) {
+    var items = [{ id: '12345', name: 'Javascript: The Good Parts', price: 1800 }];
+    var app = express();
+    app.get('/items', index);
+    request(app)
+        .get('/items')
+        .expect({items: items}, done);
+  });
+  
 });
-

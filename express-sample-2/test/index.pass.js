@@ -5,7 +5,7 @@ var request = require('supertest');
 var assert = require('power-assert');
 
 function index(req, res) {
-  res.send();
+  res.send({ items: [] });
 }
 
 describe('GET /items', function() {

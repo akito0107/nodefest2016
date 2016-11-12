@@ -5,15 +5,17 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha ./test/ --recursive",
-    "test:watch": "mocha -w ./test/ --recursive"
+    "test:watch": "mocha -w ./test/*.pass.js --recursive"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "mocha": "^3.1.2",
+    "power-assert": "^1.4.2",
     "supertest": "^2.0.1"
   },
   "dependencies": {
-    "express": "^4.14.0"
+    "express": "^4.14.0",
+    "lodash": "^4.16.6"
   }
 }
